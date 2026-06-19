@@ -1,0 +1,28 @@
+# Python virtual environment
+Include/
+Lib/
+Scripts/
+share/
+pyvenv.cfg
+
+# Byte-compiled / cached
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Large data files
+Data.csv
+
+# Trained model artifacts
+*.pkl
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
