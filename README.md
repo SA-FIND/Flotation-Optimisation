@@ -66,8 +66,8 @@ By extracting actual assay events and utilizing Autoregressive lag features, we 
 ### 1. Environment Setup
 
 ```bash
-git clone https://github.com/SA-FIND/Flotation-ML.git
-cd Flotation-ML
+git clone https://github.com/SA-FIND/Flotation-Optimisation.git
+cd Flotation-Optimisation
 
 # Create and activate virtual environment
 python -m venv .venv
