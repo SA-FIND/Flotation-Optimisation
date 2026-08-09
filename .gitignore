@@ -4,20 +4,29 @@ Lib/
 Scripts/
 share/
 pyvenv.cfg
+.venv/
+venv/
+ENV/
+env/
 
 # Byte-compiled / cached
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
 
-# Large data files
-Data.csv
+# Data files (raw and processed)
+data/*.csv
+data/*.xlsx
 
 # Trained model artifacts
+models/
 *.pkl
+*.pt
+*.h5
 
 # OS files
 .DS_Store
@@ -26,3 +35,16 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Scratch & temporary files
+scratch_hea_repo/
+*~
+*.swp
+~$*
+docs/literature_extracted/
+
+# Manuscripts and Papers (Do not upload to GitHub)
+docs/*.docx
+docs/*.md
+docs/*.ris
+archive/
