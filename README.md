@@ -46,7 +46,10 @@ By extracting actual assay events and utilizing Autoregressive lag features, we 
 │   ├── model2.0.ipynb     # UG2 small-batch (Ridge vs XGBoost vs LSTM)
 │   ├── model3.0.ipynb     # Initial Iron Ore sequence models
 │   ├── model4.0.ipynb     # Iron Ore assay-level AR lags (Final)
-├── src/                   # Python source code and notebook generation scripts
+├── src/                   # Python source code for data pipelines and executable models
+│   ├── run_case_study_2.py # Executable pipeline for Iron Ore time-series models
+│   ├── analyse_iron.py    # EDA script for Iron Ore data
+├── tests/                 # Unit tests for ML models and preprocessing logic
 ├── requirements.txt       # Project dependencies
 └── README.md              # Project documentation
 ```
@@ -57,7 +60,6 @@ By extracting actual assay events and utilizing Autoregressive lag features, we 
 
 - **Core Engineering:** Python 3.13+, Pandas, NumPy
 - **Machine Learning:** Scikit-learn, XGBoost, PyTorch
-- **Document Processing:** python-docx
 
 ---
 
@@ -92,7 +94,7 @@ jupyter notebook
 - Open `notebooks/model2.0.ipynb` to explore the UG2 small-batch analysis.
 - Open `notebooks/model4.0.ipynb` to explore the Iron Ore time-series forecasting.
 
-Alternatively, the Python scripts in `src/` can be used to programmatically generate or rebuild the notebooks.
+Alternatively, the Python scripts in `src/` can be run directly from the command line to execute the full pipeline.
 
 ---
 
