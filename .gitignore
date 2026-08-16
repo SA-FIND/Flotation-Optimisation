@@ -1,4 +1,6 @@
-# Python virtual environment
+# =============================================================================
+# Python Virtual Environments
+# =============================================================================
 Include/
 Lib/
 Scripts/
@@ -9,42 +11,70 @@ venv/
 ENV/
 env/
 
-# Byte-compiled / cached
+# =============================================================================
+# Byte-compiled / Cached
+# =============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 
-# Jupyter checkpoints
+# =============================================================================
+# Jupyter Checkpoints
+# =============================================================================
 .ipynb_checkpoints/
 
-# Data files (raw and processed)
+# =============================================================================
+# Large Process Data & Datasets (Do not upload to GitHub)
+# =============================================================================
 data/*.csv
 data/*.xlsx
+data/*.parquet
+data/*.h5
+data/*.feather
+data/*.zip
+!data/.gitkeep
 
-# Trained model artifacts
-models/
+# =============================================================================
+# Serialized Model Artifacts & Weights
+# =============================================================================
+models/*.pkl
+models/*.pt
+models/*.pth
+models/*.h5
+models/*.onnx
 *.pkl
 *.pt
+*.pth
 *.h5
+!models/.gitkeep
 
-# OS files
+# =============================================================================
+# Manuscripts, Private Documents, Drafts & Figures (Do not upload to GitHub)
+# =============================================================================
+docs/
+build_clean_paper.py
+build_publication_paper.py
+generate_doc_1_1_5.py
+update_ris.py
+src/generate_graphical_abstract.py
+archive/
+
+# =============================================================================
+# Operating System & IDE Specific
+# =============================================================================
 .DS_Store
 Thumbs.db
-
-# IDE
+desktop.ini
 .vscode/
 .idea/
 
-# Scratch & temporary files
-scratch_hea_repo/
+# =============================================================================
+# Temporary / Lock / Scratch Files
+# =============================================================================
+~$*
+~*
+*.tmp
 *~
 *.swp
-~$*
-docs/literature_extracted/
-
-# Manuscripts and Papers (Do not upload to GitHub)
-docs/*.docx
-docs/*.md
-docs/*.ris
-archive/
+scratch_hea_repo/

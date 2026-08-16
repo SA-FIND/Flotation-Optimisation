@@ -64,7 +64,8 @@ def load_and_clean_data(file_path: str) -> tuple[pd.DataFrame, List[str], List[s
 def extract_assay_events(df: pd.DataFrame, target_cols: List[str]) -> tuple[pd.DataFrame, List[int]]:
     """
     Identifies rows where true laboratory assay measurements were recorded.
-    A true measurement is identified when the target value changes from the previous row.
+    A true measurement is identified when the target value changes from the previous row,
+    including the initial baseline measurement at row 0.
     
     Args:
         df (pd.DataFrame): The raw, forward-filled DataFrame.
@@ -73,8 +74,8 @@ def extract_assay_events(df: pd.DataFrame, target_cols: List[str]) -> tuple[pd.D
     Returns:
         tuple: (DataFrame of real assay events, list of original row indices)
     """
-    # Detect changes in targets to locate the exact minute an assay result was posted
-    change_mask = (df[target_cols].diff().abs() > 0).any(axis=1)
+    # Detect changes in targets (filling initial diff with 1 to capture the first assay event)
+    change_mask = (df[target_cols].diff().fillna(1).abs() > 0).any(axis=1)
     df_real = df[change_mask].copy().reset_index(drop=True)
     real_indices = df.index[change_mask].tolist()
     
