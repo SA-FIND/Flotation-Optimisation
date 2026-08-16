@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CSV = str(PROJECT_ROOT / 'data' / 'iron_ore_flotation.csv')
 
 # ── 1. Load ──────────────────────────────────────────────────────────────────

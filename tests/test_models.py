@@ -1,25 +1,60 @@
-import pytest
-import torch
-from src.models.lstm import SimpleLSTM, FloatLSTM, AssayLSTM
+import unittest
+import numpy as np
+from src.models.linear_models import get_ridge_model
 
-def test_simple_lstm_initialization():
-    model = SimpleLSTM(n_features=10, hidden_size=16)
-    assert isinstance(model, torch.nn.Module)
-    assert model.lstm.input_size == 10
-    assert model.lstm.hidden_size == 16
+class TestModels(unittest.TestCase):
+    def test_ridge_initialization_and_fit(self):
+        model = get_ridge_model(alpha=2.0)
+        self.assertEqual(model.alpha, 2.0)
 
-def test_float_lstm_initialization():
-    model = FloatLSTM(input_size=20, hidden_size=128, num_layers=2, output_size=2)
-    assert isinstance(model, torch.nn.Module)
-    assert model.lstm.num_layers == 2
-    
-def test_assay_lstm_initialization():
-    model = AssayLSTM(n_features=15, hidden=128, layers=2)
-    assert isinstance(model, torch.nn.Module)
+        # Fit with dummy linear data
+        X = np.array([[1.0, 2.0], [2.0, 3.0], [3.0, 4.0], [4.0, 5.0]])
+        y = np.array([3.0, 5.0, 7.0, 9.0])
+        model.fit(X, y)
+        preds = model.predict(X)
+        self.assertEqual(preds.shape, (4,))
 
-def test_simple_lstm_forward_shape():
-    model = SimpleLSTM(n_features=5, hidden_size=16)
-    # Batch size 2, seq_len 1, features 5
-    dummy_input = torch.randn(2, 1, 5)
-    output = model(dummy_input)
-    assert output.shape == (2, 1)  # output should be (batch_size, 1)
+    def test_xgboost_initialization(self):
+        try:
+            import xgboost as xgb
+            from src.models.tree_models import get_xgboost_model
+            model = get_xgboost_model(max_depth=4)
+            self.assertEqual(model.max_depth, 4)
+            self.assertEqual(model.learning_rate, 0.05)
+
+            # Fit with dummy data
+            X = np.random.randn(20, 5)
+            y = np.random.randn(20)
+            model.fit(X, y)
+            preds = model.predict(X)
+            self.assertEqual(preds.shape, (20,))
+        except ImportError:
+            self.skipTest("xgboost not installed in current environment")
+
+    def test_lstm_models(self):
+        try:
+            import torch
+            from src.models.lstm import SimpleLSTM, FloatLSTM, AssayLSTM, get_assay_lstm
+
+            # Test SimpleLSTM
+            simple = SimpleLSTM(n_features=10, hidden_size=16)
+            inp = torch.randn(2, 1, 10)
+            out = simple(inp)
+            self.assertEqual(out.shape, (2, 1))
+
+            # Test FloatLSTM
+            flt = FloatLSTM(input_size=20, hidden_size=64, num_layers=2, output_size=2)
+            inp_flt = torch.randn(4, 15, 20)
+            out_flt = flt(inp_flt)
+            self.assertEqual(out_flt.shape, (4, 2))
+
+            # Test AssayLSTM factory
+            assay = get_assay_lstm(n_features=15, output_size=1)
+            inp_assay = torch.randn(3, 20, 15)
+            out_assay = assay(inp_assay)
+            self.assertEqual(out_assay.shape, (3, 1))
+        except ImportError:
+            self.skipTest("torch not installed in current environment")
+
+if __name__ == '__main__':
+    unittest.main()
