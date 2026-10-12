@@ -166,8 +166,10 @@ def add_autoregressive_features(assay_df: pd.DataFrame, target_cols: List[str]) 
         for lag in [1, 2, 3]:
             assay_df[f"{safe_col}_lag{lag}"] = assay_df[safe_col].shift(lag)
         
-        assay_df[f"{safe_col}_delta"] = assay_df[safe_col].diff()
-        assay_df[f"{safe_col}_pct_change"] = assay_df[safe_col].pct_change() * 100
+        # Momentum from PAST values only. The old diff()/pct_change() used the
+        # current target value and leaked it into the features.
+        assay_df[f"{safe_col}_delta"] = assay_df[f"{safe_col}_lag1"] - assay_df[f"{safe_col}_lag2"]
+        assay_df[f"{safe_col}_pct_change"] = (assay_df[f"{safe_col}_lag1"] / assay_df[f"{safe_col}_lag2"] - 1) * 100
 
     # Drop the initial rows that lack sufficient history to populate the lags
     assay_df_ml = assay_df.dropna(subset=[

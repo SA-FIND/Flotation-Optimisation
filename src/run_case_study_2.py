@@ -31,7 +31,9 @@ from sklearn.preprocessing import StandardScaler
 from scipy.stats import spearmanr, normaltest
 
 from src.models.tree_models import get_xgboost_model
-from src.models.lstm import TORCH_AVAILABLE, AssayLSTM, AssayDataset
+from src.models.lstm import TORCH_AVAILABLE
+if TORCH_AVAILABLE:
+    from src.models.lstm import AssayLSTM, AssayDataset
 from src.utils.config import load_config, get_project_root
 
 CSV = str(PROJECT_ROOT / 'data' / 'iron_ore_flotation.csv')
@@ -121,10 +123,15 @@ def main():
     print("STEP 3: Adding autoregressive lag features")
     print("=" * 70)
 
+    # Only PAST assay values may be used. y.diff(lag) = y_t - y_(t-lag) contains
+    # the current target y_t, so (lag1 + diff1) reproduces y_t exactly. That was
+    # the source of the earlier R2 ~0.99. Momentum features are now built from
+    # past lags only.
     for target in target_cols:
         for lag in [1, 2, 3]:
             assay_df[f'{target}_lag{lag}'] = assay_df[target].shift(lag)
-            assay_df[f'{target}_diff{lag}'] = assay_df[target].diff(lag)
+        assay_df[f'{target}_mom12'] = assay_df[f'{target}_lag1'] - assay_df[f'{target}_lag2']
+        assay_df[f'{target}_mom13'] = assay_df[f'{target}_lag1'] - assay_df[f'{target}_lag3']
 
     # Drop initial rows with NaN from lagging
     assay_df = assay_df.dropna().reset_index(drop=True)
@@ -141,7 +148,7 @@ def main():
     print(f"  Test  date range: {test['date'].min()} to {test['date'].max()}")
 
     # Feature groups
-    lag_feature_cols = [c for c in assay_df.columns if any(c.startswith(f'{t}_lag') or c.startswith(f'{t}_diff') for t in target_cols)]
+    lag_feature_cols = [c for c in assay_df.columns if any(c.startswith(f'{t}_lag') or c.startswith(f'{t}_mom') for t in target_cols)]
     sensor_feature_cols = [c for c in assay_df.columns if c not in target_cols + lab_feed_cols + ['date'] + lag_feature_cols]
     all_feature_cols = sensor_feature_cols + lag_feature_cols
 
@@ -175,17 +182,28 @@ def main():
         mae_sensor = mean_absolute_error(y_test, y_pred_sensor)
         print(f"  2. Sensor-Only XGBoost (Soft Sensor):  R² = {r2_sensor:.4f} | RMSE = {rmse_sensor:.4f} | MAE = {mae_sensor:.4f}")
 
+        # 2b. AR-only XGBoost (own past values only, no sensors)
+        ar_cols = [c for c in lag_feature_cols if c.startswith(target)]
+        model_ar = get_xgboost_model()
+        model_ar.fit(train[ar_cols].values, y_train, verbose=False)
+        y_pred_ar = model_ar.predict(test[ar_cols].values)
+        r2_ar = r2_score(y_test, y_pred_ar)
+        rmse_ar = np.sqrt(mean_squared_error(y_test, y_pred_ar))
+        print(f"  2b. AR-only XGBoost (past assays):     R² = {r2_ar:.4f} | RMSE = {rmse_ar:.4f}")
+
         # 3. Hybrid XGBoost (Sensors + AR Lags)
         X_train_all = train[all_feature_cols].values
         X_test_all  = test[all_feature_cols].values
         model_hybrid = get_xgboost_model()
-        model_hybrid.fit(X_train_all, y_train, eval_set=[(X_test_all, y_test)], verbose=False)
+        model_hybrid.fit(X_train_all, y_train, verbose=False)  # test set never seen in training
         y_pred_hybrid = model_hybrid.predict(X_test_all)
         r2_hybrid = r2_score(y_test, y_pred_hybrid)
         rmse_hybrid = np.sqrt(mean_squared_error(y_test, y_pred_hybrid))
         mae_hybrid = mean_absolute_error(y_test, y_pred_hybrid)
         print(f"  3. Hybrid XGBoost (Sensors + AR Lags): R² = {r2_hybrid:.4f} | RMSE = {rmse_hybrid:.4f} | MAE = {mae_hybrid:.4f}")
-        print(f"     -> Gain over Naive Persistence:     ΔR² = +{r2_hybrid - r2_naive:.4f}")
+        print(f"     -> Gain over Naive Persistence:     ΔR² = {r2_hybrid - r2_naive:+.4f}")
+        skill = 1 - (rmse_hybrid / rmse_naive) ** 2
+        print(f"     -> Skill vs persistence (1 - MSE_model/MSE_persist): {skill:+.3f}")
 
         # Feature importance for hybrid model
         importances = pd.Series(model_hybrid.feature_importances_, index=all_feature_cols)

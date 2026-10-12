@@ -4,6 +4,8 @@
 Include/
 Lib/
 Scripts/
+# keep the project scripts/ folder (git is case-insensitive on Windows)
+!/scripts/
 share/
 pyvenv.cfg
 .venv/
