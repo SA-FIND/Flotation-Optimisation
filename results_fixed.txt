@@ -1,0 +1,109 @@
+======================================================================
+FLOTATION ML: CASE STUDY 2 PIPELINE
+Config loaded from: C:\Users\USER\Desktop\School\coding\Flotation\config.yaml
+======================================================================
+
+======================================================================
+STEP 1: Loading raw historian
+======================================================================
+  Raw shape: 737,453 rows x 24 cols
+  Date range: 2017-03-10 01:00:00 to 2017-09-09 23:00:00
+  Duration: 183 days (~6.1 months)
+
+======================================================================
+STEP 2: Assay-event extraction (Eliminating Forward-Fill Leakage)
+======================================================================
+  Assay events extracted: 60,984 (from 737,453 raw rows)
+  Compression ratio: 12x reduction
+  Building interval & window statistics...
+  Assay dataset shape: (60984, 102)
+
+======================================================================
+STEP 3: Adding autoregressive lag features
+======================================================================
+  Final clean dataset: 3,381 rows x 112 features
+  Train: 2,704 rows | Test: 677 rows
+  Train date range: 2017-03-10 04:00:00 to 2017-08-07 11:00:00
+  Test  date range: 2017-08-07 14:00:00 to 2017-09-09 23:00:00
+
+======================================================================
+STEP 4: Model Evaluation & Ablation Comparison
+======================================================================
+
+--- Target: % Iron Concentrate ---
+  1. Naive Persistence (y_t = y_t-1):    R² = 0.2933 | RMSE = 0.8787 | MAE = 0.6573
+  2. Sensor-Only XGBoost (Soft Sensor):  R² = -0.1499 | RMSE = 1.1209 | MAE = 0.8956
+  2b. AR-only XGBoost (past assays):     R² = 0.3498 | RMSE = 0.8429
+  3. Hybrid XGBoost (Sensors + AR Lags): R² = 0.3773 | RMSE = 0.8248 | MAE = 0.6279
+     -> Gain over Naive Persistence:     ΔR² = +0.0840
+     -> Skill vs persistence (1 - MSE_model/MSE_persist): +0.119
+     Top 5 Features:
+       * % Iron Concentrate_lag1             : 0.1809
+       * % Iron Concentrate_lag2             : 0.0573
+       * % Silica Concentrate_lag1           : 0.0252
+       * % Iron Concentrate_lag3             : 0.0180
+       * % Iron Concentrate_mom12            : 0.0165
+
+--- Target: % Silica Concentrate ---
+  1. Naive Persistence (y_t = y_t-1):    R² = 0.4393 | RMSE = 0.7566 | MAE = 0.4925
+  2. Sensor-Only XGBoost (Soft Sensor):  R² = -0.2409 | RMSE = 1.1255 | MAE = 0.9332
+  2b. AR-only XGBoost (past assays):     R² = 0.4411 | RMSE = 0.7553
+  3. Hybrid XGBoost (Sensors + AR Lags): R² = 0.4291 | RMSE = 0.7634 | MAE = 0.5930
+     -> Gain over Naive Persistence:     ΔR² = -0.0101
+     -> Skill vs persistence (1 - MSE_model/MSE_persist): -0.018
+     Top 5 Features:
+       * % Silica Concentrate_lag1           : 0.1775
+       * % Silica Concentrate_lag2           : 0.0515
+       * % Iron Concentrate_lag1             : 0.0214
+       * % Silica Concentrate_lag3           : 0.0157
+       * Ore Pulp Density_mean               : 0.0118
+
+======================================================================
+STEP 5: LSTM Sequence Training
+======================================================================
+  LSTM (% Iron Concentrate       ): R² = 0.0135 | RMSE = 1.0401 | MAE = 0.8035 (Stopped at epoch 93)
+  LSTM (% Silica Concentrate     ): R² = 0.0118 | RMSE = 0.9973 | MAE = 0.7968 (Stopped at epoch 118)
+
+======================================================================
+STEP 6: Spearman Rank Correlation & Normality Tests
+======================================================================
+  Normality test (% Iron Concentrate): stat=152.50, p=7.674611e-34, Normal: No (Use Spearman)
+  Normality test (% Silica Concentrate): stat=571.29, p=8.820805e-125, Normal: No (Use Spearman)
+
+  Feature                                         Spearman vs %Fe   Spearman vs %SiO2
+  ---------------------------------------------  ----------------  ------------------
+  Starch Flow                                             +0.0399             -0.0560
+  Amina Flow                                              -0.1004             +0.1906
+  Ore Pulp Flow                                           +0.0871             +0.0071
+  Ore Pulp pH                                             +0.1864             -0.1442
+  Ore Pulp Density                                        +0.0041             +0.1045
+  Flotation Column 01 Air Flow                            +0.0220             -0.1574
+  Flotation Column 02 Air Flow                            -0.0073             -0.1224
+  Flotation Column 03 Air Flow                            +0.0011             -0.1433
+  Flotation Column 04 Air Flow                            -0.0610             -0.0451
+  Flotation Column 05 Air Flow                            +0.1026             -0.0033
+  Flotation Column 06 Air Flow                            -0.0797             -0.0267
+  Flotation Column 07 Air Flow                            -0.0539             -0.0375
+  Flotation Column 04 Level                               +0.1426             -0.1551
+  Flotation Column 05 Level                               +0.1653             -0.1620
+  Flotation Column 06 Level                               +0.0731             -0.0882
+  Flotation Column 07 Level                               +0.1417             -0.1170
+
+======================================================================
+STEP 7: Autocorrelation Structure at Assay-Event Level
+======================================================================
+  % Iron Concentrate         lag- 1: r = 0.6470
+  % Iron Concentrate         lag- 2: r = 0.5223
+  % Iron Concentrate         lag- 3: r = 0.4424
+  % Iron Concentrate         lag- 5: r = 0.2851
+  % Iron Concentrate         lag-10: r = 0.1635
+  % Silica Concentrate       lag- 1: r = 0.6688
+  % Silica Concentrate       lag- 2: r = 0.5280
+  % Silica Concentrate       lag- 3: r = 0.4387
+  % Silica Concentrate       lag- 5: r = 0.2671
+  % Silica Concentrate       lag-10: r = 0.1177
+
+======================================================================
+CASE STUDY 2 PIPELINE EXECUTION COMPLETED
+======================================================================
+
