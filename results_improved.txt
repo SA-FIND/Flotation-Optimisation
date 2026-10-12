@@ -1,0 +1,33 @@
+Rows 3381 | train 2704 (2017-03-10 04:00:00 to 2017-08-07 11:00:00) | test 677 (2017-08-07 14:00:00 to 2017-09-09 23:00:00)
+
+=== % Iron Concentrate ===
+model                                      CV MSE  CV skill |  test R2 test skill
+Persistence (y = lag1)                     0.6706    +0.000 |   0.2933     +0.000
+Ridge AR-basic                             0.5565    +0.170 |   0.4255     +0.187
+Ridge AR-ext                               0.5543    +0.173 |   0.4346     +0.200
+Ridge AR-ext + sensor means                0.6699    +0.001 |   0.4386     +0.206
+Ridge AR-ext + means + prev                0.9759    -0.455 |   0.4224     +0.183
+XGB AR-ext                                 0.5919    +0.117 |   0.4071     +0.161
+XGB AR-ext + means, d2                     0.5786    +0.137 |   0.4141     +0.171
+XGB AR-ext + means, d3                     0.5954    +0.112 |   0.4092     +0.164
+XGB AR-ext + means + prev, d3              0.6023    +0.102 |   0.4006     +0.152
+XGB AR-ext + all sensors, d3               0.5989    +0.107 |   0.4088     +0.164
+XGB delta, AR-ext + means, d3              0.5795    +0.136 |   0.4019     +0.154
+XGB delta, AR-ext + means + prev, d2       0.5676    +0.154 |   0.3934     +0.142
+--> Selected by CV (lowest CV MSE): Ridge AR-ext  ->  test R2 = 0.4346, skill vs persistence = +0.200
+
+=== % Silica Concentrate ===
+model                                      CV MSE  CV skill |  test R2 test skill
+Persistence (y = lag1)                     0.6379    +0.000 |   0.4393     +0.000
+Ridge AR-basic                             0.5298    +0.169 |   0.5164     +0.138
+Ridge AR-ext                               0.5302    +0.169 |   0.5182     +0.141
+Ridge AR-ext + sensor means                0.7399    -0.160 |   0.5139     +0.133
+Ridge AR-ext + means + prev                1.5703    -1.462 |   0.4972     +0.103
+XGB AR-ext                                 0.5651    +0.114 |   0.5037     +0.115
+XGB AR-ext + means, d2                     0.5767    +0.096 |   0.5056     +0.118
+XGB AR-ext + means, d3                     0.5978    +0.063 |   0.4991     +0.107
+XGB AR-ext + means + prev, d3              0.6005    +0.059 |   0.4995     +0.107
+XGB AR-ext + all sensors, d3               0.6009    +0.058 |   0.5051     +0.117
+XGB delta, AR-ext + means, d3              0.5658    +0.113 |   0.5101     +0.126
+XGB delta, AR-ext + means + prev, d2       0.5502    +0.137 |   0.5022     +0.112
+--> Selected by CV (lowest CV MSE): Ridge AR-basic  ->  test R2 = 0.5164, skill vs persistence = +0.138
