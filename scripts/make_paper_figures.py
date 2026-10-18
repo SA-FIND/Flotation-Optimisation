@@ -93,7 +93,8 @@ def main():
             skills[t][name] = (s, lo, hi)
             print(f"  {name:22s} R2 = {r2_score(y_te, p):+.3f}  skill = {s:+.3f}  95% CI [{lo:+.3f}, {hi:+.3f}]")
 
-        # Leakage demonstration: the original momentum feature y_t - y_{t-1} contains the target.
+        # y(t) - y(t-1) contains the target itself, so this refit measures how far one leaky
+        # feature inflates R2.
         leaky = test[t].values - test[f"{t}_lag1"].values
         leaky_tr = train[t].values - train[f"{t}_lag1"].values
         Xl_tr = np.column_stack([train[ar_basic].values, leaky_tr])
@@ -104,7 +105,7 @@ def main():
         print(f"  Leakage demo (XGBoost, AR lags): with y_t - y_t-1 R2 = {r2_leak:.4f}; "
               f"past-only R2 = {r2_fix:.4f}\n")
 
-    # Fig 1: first 10 days of the test period
+    # The full 34-day test period is too dense to see individual assays.
     fig, axes = plt.subplots(2, 1, figsize=(8, 5.5), sharex=True)
     for ax, t in zip(axes, TARGETS):
         y, base, p = preds[t]
@@ -119,7 +120,6 @@ def main():
     fig.tight_layout()
     fig.savefig(FIG / "fig1_test_forecast.png", dpi=300)
 
-    # Fig 2: skill with CI
     names = ["Sensor-only XGBoost", "Hybrid XGBoost", "Ridge (CV-selected)"]
     fig, ax = plt.subplots(figsize=(7, 3.5))
     w = 0.38
@@ -137,7 +137,6 @@ def main():
     fig.tight_layout()
     fig.savefig(FIG / "fig2_skill.png", dpi=300)
 
-    # Fig 3: leakage
     fig, ax = plt.subplots(figsize=(5.5, 3.2))
     x = np.arange(len(TARGETS))
     ax.bar(x - 0.2, [leak[t][0] for t in TARGETS], 0.4, color="tab:red", label="With y(t) - y(t-1) (leaky)")
@@ -149,7 +148,6 @@ def main():
     fig.tight_layout()
     fig.savefig(FIG / "fig3_leakage.png", dpi=300)
 
-    # Fig 4: autocorrelation at assay level
     fig, ax = plt.subplots(figsize=(5.5, 3.2))
     lags = np.arange(1, 25)
     for t, c in zip(TARGETS, ["tab:orange", "tab:blue"]):
