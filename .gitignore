@@ -80,3 +80,6 @@ desktop.ini
 *~
 *.swp
 scratch_hea_repo/
+
+# Iron ore manuscript builder (writes into gitignored docs/)
+build_iron_ore_paper.py

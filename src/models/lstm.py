@@ -31,17 +31,6 @@ if TORCH_AVAILABLE:
         def __getitem__(self, i):
             return self.X[i], self.y[i]
 
-    class SimpleLSTM(nn.Module):
-        """Simple 1-layer LSTM for LOOCV on small datasets (e.g., UG2)."""
-        def __init__(self, n_features: int, hidden_size: int = 16):
-            super().__init__()
-            self.lstm = nn.LSTM(input_size=n_features, hidden_size=hidden_size, num_layers=1, batch_first=True)
-            self.fc = nn.Linear(hidden_size, 1)
-            
-        def forward(self, x):
-            out, _ = self.lstm(x)
-            return self.fc(out[:, -1, :])
-
     class FloatLSTM(nn.Module):
         """2-layer LSTM for processing continuous sequence data."""
         def __init__(self, input_size: int, hidden_size: int = 128, num_layers: int = 2, output_size: int = 2, dropout: float = 0.3):
@@ -100,46 +89,6 @@ def get_assay_lstm(n_features: int, output_size: int = 1, **kwargs: Any):
     layers = kwargs.get('num_layers', cfg.get('num_layers', 2))
     dropout = kwargs.get('dropout', cfg.get('dropout', 0.3))
     return AssayLSTM(n_features=n_features, hidden=hidden, layers=layers, dropout=dropout, output_size=output_size)
-
-
-def run_lstm_loocv(X: np.ndarray, y: np.ndarray, epochs: int = 150, device: str = 'cpu') -> np.ndarray:
-    """
-    Leave-One-Out Cross-Validation for SimpleLSTM on small datasets.
-    """
-    if not TORCH_AVAILABLE:
-        raise ImportError("PyTorch is required for run_lstm_loocv.")
-    n_samples, n_features = X.shape
-    y_pred = np.zeros(n_samples)
-    
-    for i in range(n_samples):
-        # Leave one out
-        X_train = np.delete(X, i, axis=0)
-        y_train = np.delete(y, i, axis=0)
-        X_test = X[i:i+1]
-        
-        # Format for LSTM: (batch, seq_len=1, features)
-        X_train_t = torch.tensor(X_train, dtype=torch.float32).unsqueeze(1).to(device)
-        y_train_t = torch.tensor(y_train, dtype=torch.float32).view(-1, 1).to(device)
-        X_test_t  = torch.tensor(X_test, dtype=torch.float32).unsqueeze(1).to(device)
-        
-        model = SimpleLSTM(n_features).to(device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-        criterion = nn.MSELoss()
-        
-        for epoch in range(epochs):
-            model.train()
-            optimizer.zero_grad()
-            out = model(X_train_t)
-            loss = criterion(out, y_train_t)
-            loss.backward()
-            optimizer.step()
-            
-        model.eval()
-        with torch.no_grad():
-            pred = model(X_test_t).item()
-        y_pred[i] = pred
-        
-    return y_pred
 
 
 def train_lstm_model(model, train_loader, test_loader=None, epochs: Optional[int] = None, 

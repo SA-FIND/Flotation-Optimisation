@@ -34,13 +34,7 @@ class TestModels(unittest.TestCase):
     def test_lstm_models(self):
         try:
             import torch
-            from src.models.lstm import SimpleLSTM, FloatLSTM, AssayLSTM, get_assay_lstm
-
-            # Test SimpleLSTM
-            simple = SimpleLSTM(n_features=10, hidden_size=16)
-            inp = torch.randn(2, 1, 10)
-            out = simple(inp)
-            self.assertEqual(out.shape, (2, 1))
+            from src.models.lstm import FloatLSTM, AssayLSTM, get_assay_lstm
 
             # Test FloatLSTM
             flt = FloatLSTM(input_size=20, hidden_size=64, num_layers=2, output_size=2)
