@@ -3,8 +3,8 @@ Figures and uncertainty estimates for the iron ore manuscript.
 
 Uses the same assay events, features and 80/20 temporal split as
 scripts/improve_case_study_2.py. Models are the ones selected there by
-TimeSeriesSplit CV on the training period (Ridge AR-ext for Fe, Ridge
-AR-basic for SiO2); nothing here is tuned on the test period.
+TimeSeriesSplit CV on the training period (Ridge AR-basic for Fe, Ridge
+AR-ext for SiO2); nothing here is tuned on the test period.
 
 Outputs (docs/figures/, results_paper.txt):
   fig1_test_forecast.png  test-period assays, persistence and Ridge forecasts
@@ -67,7 +67,7 @@ def main():
     train, test = a.iloc[:split], a.iloc[split:]
     sensor_mean = [c for c in a.columns if c.endswith("_mean") and not c.startswith("%")]
 
-    selected = {"% Iron Concentrate": "ext", "% Silica Concentrate": "basic"}
+    selected = {"% Iron Concentrate": "basic", "% Silica Concentrate": "ext"}
     preds, skills, leak = {}, {}, {}
     print(f"Test assays: {len(test)} ({test.date.min()} to {test.date.max()}); "
           f"block = {BLOCK} assays, {N_BOOT} resamples\n")

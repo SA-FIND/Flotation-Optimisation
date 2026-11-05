@@ -29,14 +29,30 @@ TARGETS = ["% Iron Concentrate", "% Silica Concentrate"]
 LAB_FEED = ["% Iron Feed", "% Silica Feed"]
 
 
-def extract_events():
-    """Vectorised version of STEP 2 in run_case_study_2.py (same windows, same stats)."""
-    if CACHE.exists():
+def interpolated_rows(df):
+    """Rows in hours where either concentrate assay changes on every row.
+
+    Those values lie on a straight line, so they are interpolated, not measured.
+    The whole hour goes even when only one assay is interpolated, because the
+    extended AR features of each target include the other target's last assay.
+    """
+    per_hour = df.groupby("date")[TARGETS].transform("nunique")
+    return (per_hour > 1).any(axis=1)
+
+
+def extract_events(exclude_interpolated=True):
+    """Vectorised version of STEP 2 in run_case_study_2.py (same windows, same stats).
+
+    exclude_interpolated=False rebuilds the October 2026 event set, for comparison only.
+    """
+    if exclude_interpolated and CACHE.exists():
         return pd.read_pickle(CACHE)
     df = pd.read_csv(CSV, sep=",", decimal=",", parse_dates=["date"])
     lab_all = TARGETS + LAB_FEED
     sensors = [c for c in df.columns if c not in lab_all + ["date"]]
     change = df[lab_all].diff().fillna(1).abs().sum(axis=1) > 0
+    if exclude_interpolated:
+        change &= ~interpolated_rows(df)
     # Event k owns rows (event_{k-1}, event_k]; the first event owns rows [0, event_0].
     group = change.cumsum().shift(1).fillna(0).astype(int)
     group = group.clip(upper=change.sum() - 1)
@@ -51,7 +67,8 @@ def extract_events():
     out["date"] = ev["date"].values
     out["hour"] = ev["date"].dt.hour.values
     out["dow"] = ev["date"].dt.dayofweek.values
-    out.to_pickle(CACHE)
+    if exclude_interpolated:
+        out.to_pickle(CACHE)
     return out
 
 

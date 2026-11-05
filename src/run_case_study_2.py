@@ -73,8 +73,14 @@ def main():
     print("STEP 2: Assay-event extraction (Eliminating Forward-Fill Leakage)")
     print("=" * 70)
 
-    # Identify rows where ANY lab column changes value
-    change_mask = df[lab_all].diff().fillna(1).abs().sum(axis=1) > 0
+    # Identify rows where ANY lab column changes value. Hours where a concentrate
+    # assay changes on every row are linear interpolations between real assays,
+    # not measurements, so they never count as events.
+    per_hour = df.groupby('date')[target_cols].transform('nunique')
+    interpolated = (per_hour > 1).any(axis=1)
+    print(f"  Interpolated rows excluded: {interpolated.sum():,} "
+          f"({df.loc[interpolated, 'date'].nunique()} hours)")
+    change_mask = (df[lab_all].diff().fillna(1).abs().sum(axis=1) > 0) & ~interpolated
     assay_idx = df.index[change_mask]
     n_events = len(assay_idx)
     print(f"  Assay events extracted: {n_events:,} (from {len(df):,} raw rows)")
@@ -249,6 +255,7 @@ def main():
             X_te_seq, y_te_seq = make_sequences(X_test_s,  y_test_s,  seq_len)
 
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            torch.manual_seed(0)  # without it the LSTM row of the results table changes on every run
             model = AssayLSTM(n_features=X_tr_seq.shape[2], hidden=128, layers=2, dropout=0.3, output_size=1).to(device)
             optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
             criterion = torch.nn.MSELoss()
