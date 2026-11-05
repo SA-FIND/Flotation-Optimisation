@@ -159,7 +159,7 @@ def main():
     ax.legend(frameon=False)
     fig.tight_layout()
     fig.savefig(FIG / "fig4_acf.png", dpi=300)
-    print(f"Figures written to {FIG}")
+    print(f"Figures written to {FIG.relative_to(ROOT).as_posix()}")
 
 
 if __name__ == "__main__":

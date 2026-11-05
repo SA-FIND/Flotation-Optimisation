@@ -12,4 +12,4 @@ Test assays: 677 (2017-08-07 14:00:00 to 2017-09-09 23:00:00); block = 24 assays
   Ridge (CV-selected)    R2 = +0.496  skill = +0.168  95% CI [+0.117, +0.217]
   Leakage demo (XGBoost, AR lags): with y_t - y_t-1 R2 = 0.9804; past-only R2 = 0.4824
 
-Figures written to C:\Users\USER\Desktop\School\coding\Flotation\docs\figures
+Figures written to docs/figures

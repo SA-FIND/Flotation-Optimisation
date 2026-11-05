@@ -1,6 +1,6 @@
 ======================================================================
 FLOTATION ML: CASE STUDY 2 PIPELINE
-Config loaded from: C:\Users\USER\Desktop\School\coding\Flotation\config.yaml
+Config loaded from: config.yaml
 ======================================================================
 
 ======================================================================

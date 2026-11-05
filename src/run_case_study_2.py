@@ -41,7 +41,7 @@ CSV = str(PROJECT_ROOT / 'data' / 'iron_ore_flotation.csv')
 def main():
     print("=" * 70)
     print("FLOTATION ML: CASE STUDY 2 PIPELINE")
-    print(f"Config loaded from: {PROJECT_ROOT / 'config.yaml'}")
+    print("Config loaded from: config.yaml")
     print("=" * 70)
 
     # ═══════════════════════════════════════════════════════════════════════════════
