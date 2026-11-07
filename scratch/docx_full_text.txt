@@ -1,0 +1,476 @@
+--- P0 [Title] ---
+Machine Learning for Grade and Recovery Prediction in Froth Flotation: Empirical Validation of Sample-Size Thresholds and Time-Series Forecasting on UG2 and Iron Ore Circuits
+
+--- P1 [Normal] ---
+Solomon Ahedor
+
+--- P2 [Normal] ---
+Department of Materials and Metallurgical Engineering, Kwame Nkrumah University of Science and Technology, Kumasi, Ghana.
+
+--- P3 [Heading 1] ---
+Highlights
+
+--- P4 [Normal] ---
+Leave-One-Out Cross-Validation (LOOCV) on three-tier UG2 data confirms sample-to-feature ratio (n/p) ≥ 5 as the minimum threshold for deployable flotation models.
+
+--- P5 [Normal] ---
+Assay-level Ridge model (n = 32) achieves R2 = 0.954 and RMSE = 28.8 g/t, meeting soft sensor operational requirements.
+
+--- P6 [Normal] ---
+Run-level models (n = 3, p = 8) produce negative R2, confirming zero generalizable signal when n/p < 1.
+
+--- P7 [Normal] ---
+Assay-event extraction on a 737,453-row iron ore historian yields 3,381 clean analytical records without forward-fill data leakage; Hybrid XGBoost with autoregressive lags achieves R² = 0.9935 for %Fe and %SiO₂.
+
+--- P8 [Normal] ---
+Naive persistence baseline gives R² = 0.2933 (%Fe) and 0.4393 (%SiO₂); Hybrid XGBoost captures an additional ΔR² = +0.7003 and +0.5543 respectively by coupling AR lags with windowed sensor features.
+
+--- P9 [Normal] ---
+Pure Sensor-Only XGBoost (negative R²) and LSTM (R² = 0.127) underperform due to static snapshot limitations and irregular multi-hour sequence horizons.
+
+--- P10 [Normal] ---
+What-if analysis illustrates sensitivity of predicted recovery to Cr2O3 feed reduction and U/F split increase.
+
+--- P14 [Heading 1] ---
+Abstract
+
+--- P15 [Normal] ---
+Froth flotation optimization is constrained by non-linear process dynamics, high variable dimensionality and data scarcity at the laboratory and pilot scales. Two operational questions remain in the machine learning literature on flotation: what sample size is required before a model becomes deployable and how much advance warning can a time-series model provide operators on a continuous circuit. This paper addresses both questions with two case studies.
+
+--- P16 [Normal] ---
+In the first case study, Leave-One-Out Cross-Validation (LOOCV) is applied across three hierarchical data tiers from a UG2 platinum flotation trial: run-level (n = 3, p = 8), stream-level (n = 33, p = 7), and assay-level (n = 32, p = 6). Ridge regression produced the best results at both the stream and assay tiers. Run-level models gave negative R2 values for every regularization strategy tested, confirming that no learnable signal exists when n/p < 1. Stream-level models (R2 = 0.58, RMSE = 81.2 g/t) captured broad trends but not enough to support closed-loop control. The assay-level Ridge model (R2 = 0.954, RMSE = 28.8 g/t) met the threshold for deployment as an XRF soft sensor. Spearman rank correlation analysis found U/F split ratio (ρ = +0.98) and feed PGM+Au grade (ρ = +0.996) to be the dominant predictors of recovery and concentrate grade which correctly identified Cr2O3 as a strong non-linear suppressor (ρ = −0.855) that Pearson correlation underestimates (r = −0.44).
+
+--- P17 [Normal] ---
+In the second case study, an iron ore flotation process historian containing 737,453 observations over 183 operating days was processed using assay-event extraction. Rows where laboratory targets updated were isolated, yielding 3,381 analytical records after an autoregressive lag construction. Sensor readings between consecutive events collapsed into window-level statistics (mean, standard deviation, min, max) and autoregressive lags at t1, t2 and t3 were appended. This approach eliminates the data leakage that occurs when forward-filled laboratory values are used as targets. On an 80/20 temporal test split, Hybrid XGBoost achieved R2 = 0.9935 (%Fe) and R2 = 0.9935 (%SiO2), delivering substantial improvements (ΔR2 = +0.7003 for %Fe, ΔR² = +0.5543 for %SiO2) over the naive persistence baseline (R2 = 0.2933 and 0.4393). A pure sensor-only model achieved R2 = -0.150 and -0.241, demonstrating that static snapshot sensors without state memory cannot track product grade. An LSTM network (sequence length 20) reached R² ≈ 0.127 due to irregular discrete assay intervals spanning 20 to 40 operating hours.
+
+--- P18 [Normal] ---
+Together, the two studies define a deployment ladder: assay-level chemistry models are ready for soft sensor use at n ≥ 32 with regularization; assay-event extraction from process historians eliminates leakage and produces high-fidelity models; stream-level models support exploratory analysis; and run-level data below n = 5 cannot support reliable predictions.
+
+--- P19 [Normal] ---
+Keywords: froth flotation, machine learning, LOOCV, Ridge regression, XGBoost, LSTM, soft sensor, UG2, sample-size threshold, time-series prediction, autoregressive features, data leakage, process control
+
+--- P22 [Heading 2] ---
+1. Introduction
+
+--- P23 [Normal] ---
+Froth flotation is the dominant mineral separation technology in the mining industry. The process exploits differences in surface wettability in which hydrophobic particles attach to air bubbles and report to a froth layer for collection, while hydrophilic gangue remains in the pulp and is discharged as tailings (Ata, 2012, Wills and Finch, 2015). Over a hundred interacting variables influence the outcome, spanning reagent chemistry, feed mineralogy and cell hydrodynamics (Wang and Liu, 2021). Product quality is measured by laboratory XRF analysis with a delay of 5 to 15 minutes (Laurila et al., 2002). That measurement delay creates the operational gap that data-driven models aim to close.
+
+--- P24 [Normal] ---
+Machine learning has been applied to flotation modelling since the 1990s. Early work used shallow artificial neural networks with single hidden layers (Aldrich et al., 1997). Ensemble methods in the 2010s improved accuracy while providing interpretable feature importance (Shahbazi et al., 2017, Amankwaa-Kyeremeh et al., 2023). The current decade has seen physics-informed neural networks that embed governing equations directly into the loss function (Nasiri et al., 2025), convolutional neural networks for froth image classification (Park et al., 2022a, Fu and Aldrich, 2019) and LSTM networks for temporal prediction (Pu et al., 2020). The methods are plentiful, but the practical implementations are not well utilized.
+
+--- P25 [Normal] ---
+Two gaps stand out. First, most flotation ML studies use either very large time-series process historian or small experimental datasets and the transition zone where practitioners have tens of labelled samples from a structured sampling campaign, has not been characterized with cross-validation evidence. Second, the relationship between data leakage and model performance on time-series process historian has not been addressed directly. Forward-filling laboratory measurements into minute-level sensor data is common practice in published studies and creates exactly the kind of information leakage that inflates test-set R2 values.
+
+--- P26 [Normal] ---
+This paper reports two investigations that address these gaps. The first applies LOOCV to a three-tier UG2 platinum flotation dataset to establish empirical sample-size thresholds. The second replaces the forward-fill paradigm with explicit assay-event extraction and autoregressive lag engineering on an iron ore process historian, then benchmarks XGBoost against LSTM on the cleaned dataset. A literature review covering kinetic theory, physics-informed modelling and Moving Horizon Estimator-Nonlinear Model Predictive Control (MHE-NMPC) to situate both studies in the broader field.
+
+--- P27 [Normal] ---
+The remainder of the paper is organized as follows. Section 2 covers theoretical foundations. Section 3 presents case studies. Section 4 reviews physics-informed and hybrid modelling. Section 5 covers advanced control architecture. Section 6 discusses deployment considerations. Sections 7 and 8 give future directions and conclusions.
+
+--- P28 [Heading 1] ---
+2. Theoretical Foundations of Flotation Modelling
+
+--- P29 [Heading 2] ---
+2.1 Classical Kinetic Models
+
+--- P30 [Normal] ---
+(García-Zuñiga, 1935) proposed that cumulative mineral recovery follows a first-order exponential rate equation governed by process residence time t:
+
+--- P31 [Normal] ---
+(1)
+
+--- P32 [Normal] ---
+where R_∞ represents the maximum attainable recovery and k is the overall flotation rate constant, encompassing particle surface hydrophobicity, bubble surface area flux, and pulp hydrodynamics. Real industrial feeds contain distributed particle sizes, liberation states, and surface chemistries with distinct floatability constants(Imaizumi and Inoue, 1963).
+
+--- P33 [Normal] ---
+Kelsall (Kelsall, 1961) extended this framework to fast-floating, slow-floating, and non-floating fractions:
+
+--- P34 [Normal] ---
+(2)
+
+--- P35 [Normal] ---
+(Zhang, 1989) coupled these discrete recovery fractions into combined mass and elemental conservation balances. However, mechanistic parameter calibration cannot track intra-shift mineralogical fluctuations in real time, motivating empirical data-driven soft sensors.
+
+--- P36 [Heading 2] ---
+2.2 Hydrodynamic Influences on Flotation Rate
+
+--- P37 [Normal] ---
+The flotation rate constant, k, is strongly dictated by the hydrodynamic environment inside the cell. The bubble surface area flux, Sb, defines the total bubble surface area moving upwards per unit cross-sectional area per unit time (Gorain et al., 1997): Sb = (6Jg) / d32 (3)
+
+--- P38 [Normal] ---
+where Jg is the superficial gas velocity and d32 is the Sauter mean bubble diameter. Gorain et al. (1997) demonstrated that Sb exhibits a linear relationship with k across diverse impeller geometries and cell sizes. (Hadler and Cilliers, 2009) established that operating at peak air recovery (αpeak) maximizes both grade and recovery simultaneously.
+
+--- P39 [Heading 2] ---
+2.3 Froth Phase and Entrainment
+
+--- P40 [Normal] ---
+The froth phase determines concentrate grade through three competing mechanisms: true flotation, selective drainage and hydraulic entrainment. Neethling and Cilliers established that entrainment fraction decreases with increasing froth height and decreasing superficial gas velocity and that gangue recovery scales with water recovery (Neethling and Cilliers, 2009). Any grade prediction model must account for this relationship, either through explicit representation or through correlated process variables like froth depth and air flow rate. Ignoring it produces models that fit training data but give biased predictions when the froth operating regime shifts.
+
+--- P41 [Normal] ---
+Ata reviewed coalescence, bubble size evolution and drainage phenomena in mineralized froths (Ata, 2012). The froth phase introduces a non-linearity that kinetic models of the pulp zone alone cannot capture; this is one reason why data-driven approaches trained on whole-cell outputs often outperform mechanistic models that treat the froth as a simple separator (Quintanilla et al., 2021).
+
+--- P42 [Heading 2] ---
+3. Machine Learning Case Studies
+
+--- P43 [Heading 2] ---
+3.1 Case Study 1: LOOCV Validation on Three-Tier UG2 Flotation Data
+
+--- P44 [Heading 3] ---
+3.1.1 Motivation and Data Structure
+
+--- P45 [Normal] ---
+Industrial flotation sampling campaigns are expensive and disruptive. A typical UG2 platinum circuit trial produces three to five complete runs. To determine the minimum sample-to-feature ratio (n/p) for generalizable learning, data from an industrial UG2 campaign was partitioned into three structural tiers:
+
+--- P46 [List Bullet] ---
+Run-level tier (n = 3, p = 8): Complete trial runs with operational features (U/F split ratio, pulp density, feed PGM+Au grade, feed Cr2O3 content, dry mass, solids fraction, dilution factor, PGM/ Cr2O3 ratio). Targets: PGM+Au recovery (%) and concentrate grade (g/t).
+
+--- P47 [List Bullet] ---
+Stream-level tier (n = 33, p = 7): Stream-specific flows across individual flotation cells (bank code, cell number, dry mass flow, volumetric flow, pulp density, Cr2O3). Target: PGM+Au recovery (%).
+
+--- P48 [List Bullet] ---
+Assay-level tier (n = 32, p = 6): Elemental XRF chemistry (Cu, Ni, Fe, Cr2O3, S/ Cr2O3, Cu/Ni). Target: PGM+Au grade (g/t).
+
+--- P49 [Heading 3] ---
+3.1.2 Methods and LOOCV Validation
+
+--- P50 [Normal] ---
+Leave-One-Out Cross-Validation (LOOCV) was applied at each tier, fitting z-score scalers within each training fold to prevent information leakage. Ordinary Least Squares (OLS), Ridge (L2 regularization), and Lasso (L1 regularization) models were benchmarked.
+
+--- P51 [Caption] ---
+Table 1: Leave-One-Out Cross-Validation (LOOCV) performance across the three UG2 data tiers.
+
+--- P53 [Normal] ---
+At the run-level tier (n/p = 0.38), all model classes produced negative cross-validated R2 values. Because features exceeded samples (p > n), the regression problem was fundamentally underdetermined, causing algorithms to memorize noise. At the stream-level tier (n/p = 4.71), Ridge regression achieved R2 = 0.580 and RMSE = 81.2 g/t, providing valuable exploratory process mapping. At the assay-level tier (n/p = 5.33), regularized Ridge regression achieved R² = 0.954 and RMSE = 28.8 g/t, successfully extracting chemical associations for soft-sensor deployment.
+
+--- P54 [Heading 3] ---
+3.1.3 Spearman Rank Correlation Analysis and What-If Scenarios
+
+--- P55 [Normal] ---
+D’Agostino-Pearson normality tests confirmed that all assay-level variables rejected normality (p < 0.001), violating Pearson assumptions. Following (Lartey et al., 2025), non-parametric Spearman rank correlation (ρ) was calculated:
+
+--- P56 [Normal] ---
+(4)
+
+--- P57 [Caption] ---
+Table 2: Comparison of non-parametric Spearman rank correlation (ρ) versus Pearson correlation (r) on assay-level UG2 data (n = 32).
+
+--- P59 [Normal] ---
+Pearson correlation severely underestimates chromite suppression (r = −0.44), whereas Spearman rank correlation identifies Cr2O3 as a dominant non-linear inhibitor (ρ = −0.855). Above critical pulp concentrations, chromite particles coat PGM-sulphide surfaces and starve collector reagents (Cramer, 2001).
+
+--- P60 [Caption] ---
+Table 3: What-if sensitivity analysis for PGM+Au recovery under simulated feed and operational split adjustments (n = 3).
+
+--- P62 [Normal] ---
+While what-if modeling projects a 9.5 percentage point recovery gain, these predictions carry zero residual degrees of freedom at n = 3 and serve only as exploratory directional sensitivities.
+
+--- P63 [Heading 2] ---
+3.2 Case Study 2: Assay-Event Extraction and Time-Series Forecasting on Iron Ore Data
+
+--- P64 [Heading 3] ---
+3.2.1 Dataset and the Data Leakage Problem in Flotation Process historian
+
+--- P65 [Normal] ---
+The dataset is a publicly available iron ore flotation historian (Kaggle, 2017) containing 737,453 observations at one-minute intervals over three months, with 24 variables covering feed characteristics, reagent additions and concentrate grades. Four columns record hourly laboratory measurements: %Fe feed, %SiO2 feed, %Fe concentrate and %SiO2 concentrate.
+
+--- P66 [Normal] ---
+A common practice in published literature is forward-filling these hourly laboratory values into minute-level sensor rows and training models on the full dataset. This introduces severe data leakage. The same laboratory result is replicated across hundreds of consecutive rows, so a random train-test split allows the model to train on rows that share identical target values with nearby test rows. Any R2 reported under these conditions’ measures interpolation between leaked measurement periods rather than genuine prediction. A temporal split reduces but does not eliminate this problem, because the forward fill itself propagates future analytical information into past rows.
+
+--- P68 [Heading 3] ---
+3.2.2 Assay-Event Extraction
+
+--- P69 [Normal] ---
+To eliminate data leakage, true laboratory measurements were identified as rows where laboratory assay targets were updated. Isolating these actual change points reduced the raw 737,453 rows to 60,984 initial update moments (a 12-fold compression). Sensor readings across each preceding interval were aggregated into summary statistics (mean, standard deviation, minimum, maximum) alongside instantaneous readings at the assay moment.
+
+--- P70 [Normal] ---
+Time features (hour of day, day of week) and autoregressive lags at t1, t2, and t3 and first differences were appended for both targets. After pruning initialization rows lacking lag history, the final clean, non-leaking dataset contained 3,381 assay events and 114 engineered features (2,704 train rows and 677 test rows under an 80/20 temporal split).
+
+--- P71 [Heading 3] ---
+3.2.3 Four-Tier Model Ablation Methodology
+
+--- P72 [Normal] ---
+To rigorously evaluate the sources of predictive performance, a 4-tier ablation benchmarking framework was implemented:
+
+--- P73 [Normal] ---
+Naive Persistence Baseline: Predicts , establishing the floor of explained variance provided by process inertia between consecutive laboratory assays.
+
+--- P74 [Normal] ---
+Sensor-Only XGBoost: Trains XGBoost using exclusively interval sensor summary statistics (air flows, levels, reagents, pulp pH/density) with all target lag features removed, isolating pure soft-sensor capability.
+
+--- P75 [Normal] ---
+Hybrid XGBoost (Sensors + AR Lags): Trains XGBoost on the full feature matrix combining dynamic sensor window features and autoregressive target lags (t1, t2, t3).
+
+--- P76 [Normal] ---
+LSTM Sequence Network: Two-layer LSTM (128 hidden units, dropout 0.3, sequence length 20) evaluating sequential recurrent memory across assay events.
+
+--- P77 [Heading 3] ---
+3.2.4 Results and Discussion
+
+--- P78 [Caption] ---
+Table 4: Comprehensive four-tier model ablation benchmark on the assay-event iron ore dataset (80/20 temporal test split).
+
+--- P79 [Normal] ---
+The results demonstrate clear performance distinctions across the modeling paradigms:
+
+--- P80 [Normal] ---
+1. Baseline Persistence: On the genuine out-of-sample temporal split, persistence achieves R² = 0.2933 for %Fe and 0.4393 for %SiO₂. Unlike forward-filled data where persistence appears near 0.99, true analytical assays exhibit notable variance across multi-hour sampling intervals.
+
+--- P81 [Normal] ---
+2. Sensor-Only Limitation: Pure sensor window features without dynamic target history produced negative R² (-0.1499 and -0.2409). This indicates that static snapshot instrumentation (pulp flows, air rates, cell levels) cannot infer absolute concentrate grade without knowledge of feed grade state and mineralogical shifts.
+
+--- P82 [Normal] ---
+3. Hybrid XGBoost Performance: Combining sensor window statistics with AR lags elevates performance to R2 = 0.9935, representing a massive +0.7003 ΔR² improvement over persistence. Feature importance confirms that target lags and differences (%Fe lag1 = 0.285, diff1 = 0.219, diff2 = 0.151) anchor the state baseline while sensor window features provide vital dynamic corrections.
+
+--- P83 [Normal] ---
+4. LSTM Sequence Limitations: The LSTM achieved R2 = 0.1266. A sequence length of 20 assay events represents 20 to 40 real operating hours with non-uniform inter-sample intervals. Over a 40-hour window, major geological feed transitions and shift changes occur, eroding recurrent sequence coherence. Tabular gradient boosting with explicit local AR differences is vastly superior for irregularly sampled plant data.
+
+--- P85 [Caption] ---
+Figure 1: Hybrid XGBoost actual versus predicted % Iron Concentrate on the out-of-sample test set.
+
+--- P87 [Caption] ---
+Figure 2: Hybrid XGBoost actual versus predicted % Silica Concentrate on the out-of-sample test set.
+
+--- P90 [Caption] ---
+Figure 3: LSTM training and validation loss curves showing convergence behavior.
+
+--- P93 [Caption] ---
+Figure 4: LSTM actual versus predicted % Iron Concentrate on the out-of-sample test set.
+
+--- P96 [Heading 3] ---
+3.2.5 Statistical Distribution & Correlation Structure
+
+--- P97 [Normal] ---
+D’Agostino-Pearson normality tests confirmed extreme non-normality for both concentrate targets (%Fe: stat = 152.50, p = 7.67 × 10-34; %SiO₂: stat = 571.29, p = 8.82 × 10⁻¹²⁵), validating the strict use of non-parametric Spearman rank correlation. Spearman analysis identified Amina collector flow (ρ = +0.191 with %SiO₂), Column 05 level (ρ = +0.165 with %Fe, ρ = -0.162 with %SiO₂), and Pulp pH (ρ = +0.186 with %Fe) as key monotonic drivers.
+
+--- P98 [Heading 3] ---
+3.3 Comparison and Deployment Framework
+
+--- P99 [Normal] ---
+The two case studies address different parts of the same industrial problem. The UG2 study establishes minimum data requirements for offline model development. The iron ore study shows that careful data engineering on a process historian produces high-fidelity models when the unit of observation is aligned with real measurement events.
+
+--- P100 [Normal] ---
+Together, they define a deployment ladder:
+
+--- P101 [Normal] ---
+1. Assay-level chemistry models are ready for soft sensor deployment at n ≥ 32 with regularization (Ridge, α = 1.0).
+
+--- P102 [Normal] ---
+2. Assay-event extraction from large historians, combined with autoregressive lag features, produces operator guidance models at R2 > 0.99, delivering a +0.70 ΔR2 improvement over naive persistence.
+
+--- P103 [Normal] ---
+3. Stream-level models (n ≈ 33, R2 ~ 0.58) are exploratory tools. They do not support automated control.
+
+--- P104 [Normal] ---
+4. Run-level data at n < 5 cannot support predictive ML deployment until 30 to 50 additional runs are collected.
+
+--- P105 [Heading 2] ---
+4. Physics-Informed and Hybrid Modelling
+
+--- P106 [Heading 3] ---
+4.1 Physics-Informed Neural Networks
+
+--- P107 [Normal] ---
+Physics-informed neural networks (PINNs) add governing differential equations as soft constraints in the training loss (Raissi et al., 2019). For a flotation system described by differential operator N [C; λ] = 0, the composite loss function is defined as:
+
+--- P108 [Normal] ---
+(5)
+
+--- P109 [Normal] ---
+(Nasiri et al., 2025) tested three PINN formulations on industrial flotation cells, each encoding mass transfer assumptions between pulp and froth phases. Their mass balance PINN reduced mean squared error by 65% and mean relative error by 34% compared to a feedforward baseline. Crucially, it maintained performance on operating conditions outside the training range. Constraining the hypothesis space to physically plausible solutions lowers the n/p threshold required for generalization (Karniadakis et al., 2021). In digital twin environments, physics-informed models serve as surrogates capable of ultra-low latency emulation (Lu and et al., 2025).
+
+--- P110 [Heading 3] ---
+4.2 Hybrid Mechanistic and Data-Driven Models
+
+--- P111 [Normal] ---
+(Oosthuizen et al., 2021) developed a dynamic flotation model combining fundamental mass and volume balances with empirical froth models for water recovery and entrainment, and a Moving Horizon Estimator for real-time parameter adaptation. The mechanistic component prevents physically implausible predictions during process upsets, while the data-driven component handles bubble size dynamics and reagent-dependent rate constants.
+
+--- P112 [Normal] ---
+(Mathe et al., 2021) extended hybrid modelling to the grinding-flotation interface, linking particle size reduction to floatability classes. (Quintanilla et al., 2021) reviewed models designed for control, noting that hybrid models offer the optimal balance between physical interpretability and real-time adaptability.
+
+--- P113 [Heading 2] ---
+5. Advanced Control Architectures
+
+--- P114 [Heading 3] ---
+5.1 Moving Horizon Estimation and NMPC
+
+--- P115 [Normal] ---
+Moving Horizon Estimation (MHE) solves a rolling optimization over a window of recent measurements, updating state estimates and model parameters at each sample interval (Oosthuizen et al., 2021). Nonlinear Model Predictive Control (NMPC) uses the hybrid dynamic model to optimize future control actions over a prediction horizon, penalizing concentrate grade deviations while rewarding recovery. In simulation, NMPC achieved 5.8% higher average recovery than PI control when both air flowrate and froth depth were manipulated (Oosthuizen et al., 2021).
+
+--- P116 [Heading 2] ---
+5.2 Peak Air Recovery and Digital Twins
+
+--- P117 [Normal] ---
+(Shean et al., 2017) demonstrated a model-free alternative where a controller that iteratively adjusts air flowrate to maximize measured air recovery α. For circuits where air flowrate is the primary degree of freedom, peak air recovery control provides a practical first step. Full digital twin environments integrate these ML models, physical simulations, and real-time plant data to allow virtual what-if testing of process parameters before implementation (Zeb et al., 2024).
+
+--- P118 [Heading 2] ---
+6. Practical Deployment Considerations
+
+--- P119 [Heading 3] ---
+6.1 Data Quality and Outlier Detection
+
+--- P120 [Normal] ---
+Industrial flotation process historians contain outliers from sensor malfunctions, process upsets, and maintenance activities. (Lartey et al., 2024) compared four detection methods on a flotation dataset where k-nearest neighbors (k = 20) achieved the highest detection rate at 84% with a 12% false positive rate. Removing detected outliers reduced model prediction error by 15 to 20%. At small sample sizes (n = 3), outlier damage is amplified, reinforcing the n/p ≥ 5 threshold as a hard minimum.
+
+--- P121 [Heading 2] ---
+6.2 Soft Sensor Integration and Froth Imaging
+
+--- P122 [Normal] ---
+The assay-level Ridge model can operate as a soft sensor during the 5-to-15-minute gap between XRF measurements. At RMSE = 28.8 g/t, a ±50 g/t alarm threshold gives a low false alarm rate on concentrate streams. Froth surface appearance carries complementary information, (Park et al., 2022b) developed a CNN classifying froth mobility from lip-overflow images with 98% accuracy, while (Fu and Aldrich, 2019) classified operational states at 95% accuracy. Deep learning architectures like FlotationNet (Pu et al., 2020) show that image channels reliably augment scalar process historian data.
+
+--- P123 [Heading 2] ---
+7. Future Directions
+
+--- P124 [Normal] ---
+Emerging equipment architectures like the Jameson Cell, Eriez StackCell (Pyle et al., 2022) and HydroFloat coarse particle flotation operate under distinct hydrodynamic regimes that require updated kinetic representations. Similarly, green flotation chemistry, including biosurfactants and nanoparticle collectors (Hoseinian et al., 2020), introduces unique degradation kinetics. Looking further ahead, federated learning across multi-site operations (Willard et al., 2022) and causal machine learning algorithms (Peters et al., 2017) offer paths to decouple correlation from genuine metallurgical causality.
+
+--- P127 [Heading 2] ---
+8. Conclusions
+
+--- P128 [Normal] ---
+This paper reported two machine learning case studies on flotation data and reviewed the broader modelling and control literature. On the UG2 circuit, LOOCV proved that n/p < 1 (run-level n = 3) yields zero generalizable signal (negative R2), while n/p ≥ 5 (assay-level n = 32) achieves R2 = 0.954 and RMSE = 28.8 g/t using regularized Ridge regression. Spearman rank correlation analysis identified Cr2O3 as a strong non-linear suppressor of PGM+Au grade (ρ = −0.855), a relationship that Pearson correlation substantially underestimates (r = −0.44). On the iron ore circuit, assay-event extraction reduced 737,453 process historian rows to 3,381 clean analytical records, eliminating synthetic forward-fill leakage. On an 80/20 temporal test split, Hybrid XGBoost achieved R2 = 0.9935 (%Fe) and R2 = 0.9935 (%SiO₂), delivering a massive +0.7003 ΔR2 gain over naive persistence (R2 = 0.2933). Sensor-only models (negative R2) and LSTMs (R2 = 0.127) confirmed that explicit local AR features coupled with window statistics provide the only reliable modeling architecture for irregularly sampled plant process historians. The practical message is that data quality and domain-aware data engineering matter far more than raw model complexity. Ridge regression or XGBoost on clean, properly structured data outperforms complex neural architectures trained on leaky datasets.
+
+--- P129 [Heading 2] ---
+Declaration of Competing Interest
+
+--- P130 [Normal] ---
+The author declares no competing financial interest.
+
+--- P132 [Heading 1] ---
+References
+
+--- P133 [EndNote Bibliography] ---
+ALDRICH, C., MOOLMAN, D., GOUWS, F. & SCHMITZ, G. 1997. Machine learning strategies for control of flotation plants. Control Engineering Practice, 5, 263-269.
+
+--- P134 [EndNote Bibliography] ---
+AMANKWAA-KYEREMEH, B., EHRIG, K., GREET, C. & ASAMOAH, R. 2023. Pulp chemistry variables for Gaussian process prediction of rougher copper recovery. Minerals, 13, 731.
+
+--- P135 [EndNote Bibliography] ---
+ATA, S. 2012. Phenomena in the froth phase of flotation: a review. International Journal of Mineral Processing 102-103, 1-12.
+
+--- P136 [EndNote Bibliography] ---
+CRAMER, L. A. 2001. The extractive metallurgy of South Africa's platinum ores. JOM, 53, 14-18.
+
+--- P137 [EndNote Bibliography] ---
+FU, Y. & ALDRICH, C. 2019. Flotation froth image recognition with convolutional neural networks. Minerals Engineering, 132, 183-190.
+
+--- P138 [EndNote Bibliography] ---
+GARCÍA-ZUÑIGA, H. 1935. The efficiency obtained by flotation is an exponential function of time. Boletín Minero Sociedad Nacional de Minería, 47, 83-86.
+
+--- P139 [EndNote Bibliography] ---
+GORAIN, B. K., FRANZIDIS, J. P. & MANLAPIG, E. V. 1997. Studies on impeller type, impeller speed and air flow rate in an industrial scale flotation cell. Part 4: Effect of bubble surface area flux on flotation performance. Minerals Engineering, 10, 367-379.
+
+--- P140 [EndNote Bibliography] ---
+HADLER, K. & CILLIERS, J. J. 2009. The relationship between the peak in air recovery and flotation bank performance. Minerals Engineering, 22, 451-455.
+
+--- P141 [EndNote Bibliography] ---
+HOSEINIAN, F. S., REZAI, B., KOWSARI, E., CHINNAPPAN, A. & RAMAKRISHNA, S. 2020. Synthesis and characterisation of a novel nanocollector for the removal of nickel ions from synthetic wastewater using ion flotation. Separation and Purification Technology, 240, 116639.
+
+--- P142 [EndNote Bibliography] ---
+IMAIZUMI, T. & INOUE, T. 1963. Kinetic consideration of froth flotation. Proceedings 6th International Mineral Processing Congress, Cannes, pp. 581-593.
+
+--- P143 [EndNote Bibliography] ---
+KAGGLE 2017. Quality Prediction in a Mining Process Dataset. https://www.kaggle.com/datasets/edumagalhaes/quality-prediction-in-a-mining-process.
+
+--- P144 [EndNote Bibliography] ---
+KARNIADAKIS, G., KEVREKIDIS, I., LU, L., PERDIKARIS, P., WANG, S. & YANG, L. 2021. Physics-informed machine learning. Nature Reviews Physics, 3, 422-440.
+
+--- P145 [EndNote Bibliography] ---
+KELSALL, D. F. 1961. Application of probability in the assessment of flotation systems. Transactions of the Institution of Mining and Metallurgy, 70, 191-204.
+
+--- P146 [EndNote Bibliography] ---
+LARTEY, C., AMANKWAA-KYEREMEH, B., SKINNER, W., ZANIN, M. & ASAMOAH, R. K. 2025. Interpretable machine learning model for prediction of copper recovery in flotation. Minerals Engineering, 232, 109492.
+
+--- P147 [EndNote Bibliography] ---
+LARTEY, C., LIU, J., ASAMOAH, R. K., GREET, C., ZANIN, M. & SKINNER, W. 2024. Effective outlier detection for ensuring data quality in flotation data modelling using machine learning algorithms. Minerals, 14, 925.
+
+--- P148 [EndNote Bibliography] ---
+LAURILA, H., KARESVUORI, J. & TIILI, O. 2002. Strategies for instrumentation and control of flotation circuits. In: Mineral Processing Plant Design, Practice and Control. SME, pp. 2174-2195.
+
+--- P149 [EndNote Bibliography] ---
+LU, J. & ET AL. 2025. Data-driven predictive frameworks for flotation process optimisation. Minerals Engineering, 215, 108850.
+
+--- P150 [EndNote Bibliography] ---
+MATHE, E., CRUZ, C., LUCAY, F. A., GÁLVEZ, E. D. & CISTERNAS, L. A. 2021. Development of a grinding model based on flotation performance. Minerals Engineering, 166, 106890.
+
+--- P151 [EndNote Bibliography] ---
+NASIRI, M., IQBAL, S. & SÄRKKÄ, S. 2025. Physics-informed machine learning for grade prediction in froth flotation. Minerals Engineering, 227, 109297.
+
+--- P152 [EndNote Bibliography] ---
+NEETHLING, S. J. & CILLIERS, J. J. 2009. The entrainment factor in froth flotation: model for particle size and other operating parameter effects. International Journal of Mineral Processing, 93, 141-148.
+
+--- P153 [EndNote Bibliography] ---
+OOSTHUIZEN, D. J., LE ROUX, J. D. & CRAIG, I. K. 2021. A dynamic flotation model to infer process characteristics from online measurements. Minerals Engineering, 167, 106878.
+
+--- P154 [EndNote Bibliography] ---
+PARK, H., BAI, C. & WANG, L. 2022a. A convolutional neural network for classification of froth mobility in an industrial flotation cell. Mineral Processing and Extractive Metallurgy Review, 44, 1-9.
+
+--- P155 [EndNote Bibliography] ---
+PARK, H., BAI, C. & WANG, L. 2022b. A convolutional neural network for classification of froth mobility in an industrial flotation cell. Mineral Processing and Extractive Metallurgy Review, 44, 209-217.
+
+--- P156 [EndNote Bibliography] ---
+PETERS, J., JANZING, D. & SCHÖLKOPF, B. 2017. Elements of Causal Inference: Foundations and Learning Algorithms, MIT Press.
+
+--- P157 [EndNote Bibliography] ---
+PU, Y., SZMIGIEL, A., CHEN, J. & APEL, D. B. 2020. FlotationNet: a hierarchical deep learning network for froth flotation recovery prediction. Powder Technology, 375, 317-326.
+
+--- P158 [EndNote Bibliography] ---
+PYLE, L., TABOSA, E., VIANNA, S., SINCLAIR, S. & VALERY, W. 2022. Future (and present) trends in flotation circuit design BTI - IMPC Asia Pacific 2022. AusIMM.
+
+--- P159 [EndNote Bibliography] ---
+QUINTANILLA, P., NEETHLING, S. J. & BRITO-PARADA, P. R. 2021. Modelling for froth flotation control: a review. Minerals Engineering, 162, 106718.
+
+--- P160 [EndNote Bibliography] ---
+RAISSI, M., PERDIKARIS, P. & KARNIADAKIS, G. 2019. Physics-informed neural networks: a deep learning framework for solving forward and inverse problems involving nonlinear PDEs. Journal of Computational Physics, 378, 686-707.
+
+--- P161 [EndNote Bibliography] ---
+SHAHBAZI, B., CHELGANI, S. C. & MATIN, S. 2017. Prediction of froth flotation responses based on various conditioning parameters by Random Forest method. Colloids and Surfaces A, 529, 936-941.
+
+--- P162 [EndNote Bibliography] ---
+SHEAN, B., HADLER, K. & CILLIERS, J. J. 2017. A flotation control system to optimise performance using peak air recovery. Chemical Engineering Research and Design, 117, 57-65.
+
+--- P163 [EndNote Bibliography] ---
+WANG, D. & LIU, Q. 2021. Hydrodynamics of froth flotation and its effects on fine and ultrafine mineral particle flotation: a literature review. Minerals Engineering, 173, 107220.
+
+--- P164 [EndNote Bibliography] ---
+WILLARD, J., JIA, X., XU, S., STEINBACH, M. & KUMAR, V. 2022. Integrating scientific knowledge with machine learning for engineering and environmental systems. ACM Computing Surveys, 55, 1-37.
+
+--- P165 [EndNote Bibliography] ---
+WILLS, B. A. & FINCH, J. 2015. Wills' Mineral Processing Technology, 8th ed. Butterworth-Heinemann.
+
+--- P166 [EndNote Bibliography] ---
+ZEB, A., LINNOSMAA, J., SEPPI, M. & SAARELA, O. 2024. Developing deep learning surrogate models for digital twins in mineral processing. Minerals Engineering, 216, 108867.
+
+--- P167 [EndNote Bibliography] ---
+ZHANG, J. G. 1989. Factors affecting the kinetics of froth flotation. PhD Thesis, University of Leeds.
+
+=================== TABLES ===================
+
+--- Table 1 (4 rows x 8 cols) ---
+Row 0: Data Tier | n | p | n / p | Best Model | R² (LOOCV) | RMSE | Deployability
+Row 1: Run-level | 3 | 8 | 0.38 | All models | < 0 (neg.) | High | No
+Row 2: Stream-level | 33 | 7 | 4.71 | Ridge α=0.5 | 0.580 | 81.2 g/t | Conditional
+Row 3: Assay-level | 32 | 6 | 5.33 | Ridge α=1.0 | 0.954 | 28.8 g/t | Yes
+
+--- Table 2 (3 rows x 5 cols) ---
+Row 0: Feature Variable | Spearman ρ vs PGM+Au | Pearson (r) vs PGM+Au | | Δ | | Non-linear Dynamic
+Row 1: Cu (%) | +0.945 | +0.970 | 0.025 | No (Linear)
+Row 2: Cr2O3 (%) | −0.855 | −0.439 | 0.416 | Yes (Dominant suppressor)
+
+--- Table 3 (7 rows x 2 cols) ---
+Row 0: Operating Scenario | Predicted Recovery (%)
+Row 1: Base: Run 3 actual (U/F = 12.7%, Cr2O3 = 18.1%) | 58.4
+Row 2: U/F split increased to 16.0% | 60.9
+Row 3: U/F split increased to 18.0% | 62.5
+Row 4: Feed PGM+Au increased to 6.0 g/t | 55.4
+Row 5: Feed Cr2O3 reduced to 15.0% | 66.7
+Row 6: Combined: U/F = 18.0%, PGM = 6.0 g/t, Cr2O3 = 15.0% | 67.9
+
+--- Table 4 (9 rows x 6 cols) ---
+Row 0: Model Tier / Configuration | Target Variable | R² (Test) | RMSE | MAE | ΔR2 vs Persistence
+Row 1: 1. Naive Persistence | % Fe Concentrate | 0.2933 | 0.8787 | 0.6573 | Baseline (0.000)
+Row 2: 1. Naive Persistence | % SiO₂ Concentrate | 0.4393 | 0.7566 | 0.4925 | Baseline (0.000)
+Row 3: 2. Sensor-Only XGBoost (No Lags) | % Fe Concentrate | -0.1499 | 1.1209 | 0.8956 | -0.4432
+Row 4: 2. Sensor-Only XGBoost (No Lags) | % SiO₂ Concentrate | -0.2409 | 1.1255 | 0.9332 | -0.6802
+Row 5: 3. Hybrid XGBoost (Sensors + AR Lags) | % Fe Concentrate | 0.9935 | 0.0840 | 0.0568 | +0.7003
+Row 6: 3. Hybrid XGBoost (Sensors + AR Lags) | % SiO₂ Concentrate | 0.9935 | 0.0812 | 0.0523 | +0.5543
+Row 7: 4. LSTM Sequence Model (seq=20) | % Fe Concentrate | 0.1266 | 0.9787 | 0.7661 | -0.1667
+Row 8: 4. LSTM Sequence Model (seq=20) | % SiO₂ Concentrate | 0.1274 | 0.9372 | 0.6901 | -0.3119
