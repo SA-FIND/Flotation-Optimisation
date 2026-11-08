@@ -1,0 +1,10 @@
+Interpolated hours: 320 (57,600 rows)
+  both assays 206 | SiO2 only 104 | Fe only 10
+  hours where an assay takes a new value on every row: 320 of 320
+  largest departure from a straight line, as a fraction of the hour's range: 1.1e-08
+
+October 2026 event set: 3381 rows; current: 3381 rows
+  October rows inside interpolated hours: 84 (train 72, test 12)
+  rows only in the current set: 84
+  % Iron Concentrate: mean |assay - previous assay| 0.541 on those rows, 0.619 on real assays
+  % Silica Concentrate: mean |assay - previous assay| 0.033 on those rows, 0.542 on real assays
