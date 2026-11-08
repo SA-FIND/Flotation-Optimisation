@@ -1,36 +1,41 @@
 # Flotation ML
 
-Can the sensors on an iron ore flotation plant forecast the next concentrate assay better than just repeating the last one? I tested this on a public plant historian: 737,453 rows at about 20-second intervals, with hourly laboratory assays of % Fe and % SiO₂ in the concentrate.
+This project forecasts the hourly concentrate grade (% Fe and % SiO₂) of an iron ore flotation plant from its process historian, and tests whether the process sensors make the forecast any better.
 
-Every model is scored against persistence, y(t) = y(t-1). Skill is 1 - MSE(model) / MSE(persistence), so any positive value beats repeating the last assay.
+The data is a public historian from an iron ore reverse flotation plant: 737,453 rows at about 20-second intervals, March to September 2017, with hourly laboratory assays.
 
-## What I found
+## Results
 
-**1. Concentrate grade follows its own recent history.** On a time-ordered split (train 10 Mar to 7 Aug 2017, 2,704 assays; test 7 Aug to 9 Sep 2017, 677 assays), the best model is a Ridge regression on past assays alone. No model with sensor inputs had a lower cross-validated error, and models on the sensors alone score below persistence.
+I compare every model with persistence, which predicts that the next assay equals the last one. Skill is 1 - MSE(model) / MSE(persistence), so a model with skill above 0 beats persistence.
+
+The split is in time order: training from 10 Mar to 7 Aug 2017 (2,704 assays), testing from 7 Aug to 9 Sep 2017 (677 assays).
 
 | Model (test period) | Fe R² | Fe skill | SiO₂ R² | SiO₂ skill |
 |---|---|---|---|---|
 | Persistence, y(t) = y(t-1) | 0.247 | 0 | 0.394 | 0 |
 | XGBoost on sensors only | -0.120 | below 0 | -0.123 | below 0 |
 | XGBoost on sensors and past assays | 0.350 | +0.137 | 0.419 | +0.041 |
-| **Ridge on past assays (chosen by CV)** | **0.402** | **+0.206** | **0.496** | **+0.168** |
+| Ridge on past assays (chosen by CV) | 0.402 | +0.206 | 0.496 | +0.168 |
 | LSTM (sequence length 20) | 0.050 | below 0 | -0.280 | below 0 |
 
-The 95% moving-block bootstrap interval on the Ridge skill is +0.157 to +0.251 for Fe and +0.117 to +0.217 for SiO₂.
+The best model is a Ridge regression on past assays alone. Its 95% moving-block bootstrap interval on skill is +0.157 to +0.251 for Fe and +0.117 to +0.217 for SiO₂. No model with sensor inputs had a lower cross-validated error, and the sensor-only models do worse than persistence. On this plant, the grade mostly follows its own recent history.
 
-**2. The way you split the data decides the answer.** If the 20-second rows are split at random, a random forest on the sensors gets R² = 0.92 for SiO₂, because neighbouring rows share the same assay. Split in time order and every sensor-only model drops below 0 (`results/split_ladder.csv`).
+Two choices change these numbers a lot:
 
-**3. One leaky feature is enough to fake a near-perfect model.** A momentum feature written as y(t) - y(t-1) contains the value being predicted. With it, XGBoost reaches R² = 0.98 for both targets; with the same feature built from past assays only, it gets 0.38 (Fe) and 0.48 (SiO₂). `tests/test_leakage.py` fails if any feature is computed from the current target.
+- How the data is split. If the 20-second rows are split at random, a random forest on the sensors gets R² = 0.92 for SiO₂, because neighbouring rows carry the same assay. With a time-ordered split, every sensor-only model falls below 0 (`results/split_ladder.csv`).
+- Features that contain the target. A momentum feature written as y(t) - y(t-1) includes the value being predicted. With it, XGBoost gets R² = 0.98 for both targets. Built from past assays only, the same feature gives 0.38 (Fe) and 0.48 (SiO₂). `tests/test_leakage.py` fails if any feature uses the current target.
 
-## How the data is prepared
+## Data preparation
 
-The historian repeats each hourly assay on every row until the next one arrives. I rebuild it as one row per real assay (3,381 rows), with lags of earlier assays and statistics of the process sensors over the interval before each assay. In 320 hours, at least one concentrate assay changes on every row along a straight line. Those values are interpolated, not measured, so I leave those hours out (`results/interpolated_hours.txt`).
+The historian repeats each hourly assay on every row until the next one comes in. I rebuild it as one row per real assay (3,381 rows), with lags of earlier assays and statistics of the sensors over the interval before each assay.
 
-Model choices (features, target form, hyperparameters) are made by 5-fold `TimeSeriesSplit` on the training period only. The test period is scored once, after selection.
+In 320 hours, at least one concentrate assay changes on every row along a straight line. Those values were interpolated, not measured, so I leave those hours out (`results/interpolated_hours.txt`).
 
-`scripts/make_synthetic_flotation.py` writes a synthetic historian whose best possible R² is about 0.5, so a near-perfect score on it points to a leak.
+Features, target form and hyperparameters are chosen by 5-fold `TimeSeriesSplit` on the training period only. The test period is scored once, after that.
 
-## Run it yourself
+`scripts/make_synthetic_flotation.py` writes a synthetic historian where the best possible R² is about 0.5. If a model scores close to 1 on it, a feature is leaking the target.
+
+## Running it
 
 1. Download the Kaggle dataset described in `data/README.md` and save it as `data/iron_ore_flotation.csv`.
 2. Set up the environment, then run the tests and scripts:
@@ -48,7 +53,7 @@ python scripts/split_ladder.py                                    # random vs ti
 python scripts/check_interpolated_hours.py > results/interpolated_hours.txt
 ```
 
-## What is in the repo
+## Repo layout
 
 ```text
 data/       the dataset goes here (not tracked, see data/README.md)
@@ -58,14 +63,9 @@ tests/      unit tests, including the leakage test
 results/    outputs of the scripts above
 ```
 
-## What comes next
+## Data source
 
-- Run the same protocol on a second plant's historian to see whether the result holds.
-- Forecast more than one assay ahead, with intervals.
-
-## Data and credits
-
-Data: "Quality Prediction in a Mining Process" by Eduardo Magalhães Oliveira, Kaggle. A public historian from an iron ore reverse flotation plant, March to September 2017.
+"Quality Prediction in a Mining Process" by Eduardo Magalhães Oliveira, on Kaggle.
 
 ## License and contact
 
